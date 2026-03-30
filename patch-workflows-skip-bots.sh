@@ -55,7 +55,7 @@ if [[ ${DRY_RUN} == "true" ]]; then
 fi
 
 WORK_DIR=$(mktemp -d)
-trap 'rm -rf "$WORK_DIR"' EXIT
+trap 'rm -rf "${WORK_DIR}"' EXIT
 
 SUMMARY_PATCHED=()
 SUMMARY_SKIPPED=()
@@ -71,7 +71,10 @@ import re
 
 
 def patch_workflow(content, bot_actors):
-    condition = f"!contains(fromJSON('{bot_actors}'), github.actor)"
+    condition = (
+        f"!(github.event_name == 'pull_request' && "
+        f"contains(fromJSON('{bot_actors}'), github.actor))"
+    )
 
     if "fromJSON" in content and "github.actor" in content:
         return None, "already_patched"
