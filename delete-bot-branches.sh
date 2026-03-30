@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # delete-bot-branches.sh
-# chore/skip-bot-pr-workflows 원격 브랜치를 전체 리포에서 일괄 삭제합니다.
+# Bulk delete remote chore/skip-bot-pr-workflows branches from the entire repository.
 
 set -euo pipefail
 export GH_PAGER=""
@@ -18,8 +18,8 @@ success() { echo -e "${GREEN}[OK]${NC}    $*"; }
 warn() { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 error() { echo -e "${RED}[ERR]${NC}   $*"; }
 
-info "대상 사용자: ${GH_USER}"
-info "삭제할 브랜치: ${BRANCH_NAME}"
+info "Target user: ${GH_USER}"
+info "Branches to delete: ${BRANCH_NAME}"
 echo ""
 
 REPOS=$(gh repo list "${GH_USER}" --limit 200 --json name -q '.[].name')
@@ -35,15 +35,15 @@ while read -r repo; do
 	fi
 
 	if GH_PAGER="" gh api --method DELETE "repos/${GH_USER}/${repo}/git/refs/heads/${BRANCH_NAME}" 2>/dev/null; then
-		success "${repo}: 삭제 완료"
+		success "${repo}: Deletion complete"
 		DELETED+=("${repo}")
 	else
-		error "${repo}: 삭제 실패"
+		error "${repo}: Deletion failed"
 		ERRORS+=("${repo}")
 	fi
 done <<<"${REPOS}"
 
 echo ""
 echo "════════════════════════════════════════"
-success "삭제 완료: ${#DELETED[@]}개"
-[[ ${#ERRORS[@]} -gt 0 ]] && error "실패: ${#ERRORS[@]}개 — ${ERRORS[*]}"
+success "Deletion complete: ${#DELETED[@]} branches"
+[[ ${#ERRORS[@]} -gt 0 ]] && error "Failed: ${#ERRORS[@]} errors — ${ERRORS[*]}"
