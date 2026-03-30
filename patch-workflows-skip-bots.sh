@@ -161,6 +161,7 @@ info "Fetching repository list..."
 REPOS=$(gh repo list "${GH_USER}" \
 	--limit 200 \
 	--no-archived \
+	--source \
 	--json name,defaultBranchRef \
 	--jq '.[] | "\(.name)|\(.defaultBranchRef.name // "main")"')
 
