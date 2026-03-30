@@ -180,7 +180,8 @@ while IFS='|' read -r REPO_NAME DEFAULT_BRANCH; do
   WORKFLOW_API_RESPONSE=$(gh api "repos/${FULL_REPO}/contents/.github/workflows" \
     --include 2>/dev/null || true)
   
-  HTTP_STATUS=$(echo "$WORKFLOW_API_RESPONSE" | grep -m1 '^HTTP/' | awk '{print $2}' || echo "0")
+  HTTP_STATUS=$(echo "$WORKFLOW_API_RESPONSE" | grep -m1 '^HTTP/' | awk '{print $2}' || true)
+  HTTP_STATUS="${HTTP_STATUS:-0}"
   
   if [[ "$HTTP_STATUS" != "200" ]]; then
     warn "  └ .github/workflows 없음, 스킵"
@@ -200,7 +201,7 @@ while IFS='|' read -r REPO_NAME DEFAULT_BRANCH; do
   
   # 이미 패치 브랜치가 있는지 확인 (clone 전에 체크, HTTP status로 판단)
   BRANCH_STATUS=$(gh api "repos/${FULL_REPO}/branches/${BRANCH_NAME}" \
-    -i 2>/dev/null | head -1 | awk '{print $2}')
+    -i 2>/dev/null | head -1 | awk '{print $2}' || true)
   if [[ "$BRANCH_STATUS" == "200" ]]; then
     warn "  └ 이미 ${BRANCH_NAME} 브랜치 존재, 스킵"
     SUMMARY_SKIPPED+=("$REPO_NAME (branch exists)")
