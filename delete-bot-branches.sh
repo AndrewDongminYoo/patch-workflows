@@ -3,6 +3,7 @@
 # chore/skip-bot-pr-workflows 원격 브랜치를 전체 리포에서 일괄 삭제합니다.
 
 set -euo pipefail
+export GH_PAGER=""
 
 BRANCH_NAME="chore/skip-bot-pr-workflows"
 GH_USER=$(gh api user -q .login)
@@ -29,7 +30,7 @@ while read -r repo; do
     continue
   fi
 
-  if gh api --method DELETE "repos/${GH_USER}/${repo}/git/refs/heads/${BRANCH_NAME}" 2>/dev/null; then
+  if GH_PAGER="" gh api --method DELETE "repos/${GH_USER}/${repo}/git/refs/heads/${BRANCH_NAME}" 2>/dev/null; then
     success "${repo}: 삭제 완료"
     DELETED+=("$repo")
   else
