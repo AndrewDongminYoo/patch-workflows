@@ -197,8 +197,24 @@ while IFS='|' read -r REPO_NAME DEFAULT_BRANCH; do
     continue
   fi
   
+  # 이미 패치 브랜치가 있는지 확인 (clone 전에 체크)
+  EXISTING_BRANCH=$(gh api "repos/${FULL_REPO}/branches/${BRANCH_NAME}" \
+    --jq '.name' 2>/dev/null || echo "")
+  if [[ -n "$EXISTING_BRANCH" ]]; then
+    warn "  └ 이미 ${BRANCH_NAME} 브랜치 존재, 스킵"
+    SUMMARY_SKIPPED+=("$REPO_NAME (branch exists)")
+    continue
+  fi
+
+  # dry-run: clone 없이 워크플로우 파일 목록만 API로 확인
+  if [[ "$DRY_RUN" == "true" ]]; then
+    success "  └ [DRY-RUN] 워크플로우 ${WORKFLOW_COUNT}개 파일 패치 예정 (실제 내용 미검사)"
+    SUMMARY_PATCHED+=("$REPO_NAME (${WORKFLOW_COUNT} files, dry-run)")
+    continue
+  fi
+
   info "  └ 워크플로우 ${WORKFLOW_COUNT}개 발견, clone 중..."
-  
+
   # shallow clone
   if ! git clone --quiet --depth 1 \
     "https://github.com/${FULL_REPO}.git" \
@@ -207,28 +223,18 @@ while IFS='|' read -r REPO_NAME DEFAULT_BRANCH; do
     SUMMARY_ERRORS+=("$REPO_NAME (clone failed)")
     continue
   fi
-  
+
   cd "$REPO_DIR"
-  
-  # 이미 패치 브랜치가 있는지 확인
-  EXISTING_BRANCH=$(gh api "repos/${FULL_REPO}/branches/${BRANCH_NAME}" \
-    --jq '.name' 2>/dev/null || echo "")
-  if [[ -n "$EXISTING_BRANCH" ]]; then
-    warn "  └ 이미 ${BRANCH_NAME} 브랜치 존재, 스킵"
-    SUMMARY_SKIPPED+=("$REPO_NAME (branch exists)")
-    cd - > /dev/null
-    continue
-  fi
-  
+
   # 워크플로우 파일 패치
   WORKFLOW_DIR=".github/workflows"
   PATCHED_FILES=()
-  
+
   for wf_file in "${WORKFLOW_DIR}"/*.yml "${WORKFLOW_DIR}"/*.yaml; do
     [[ -f "$wf_file" ]] || continue
-    
+
     RESULT=$(python3 - "$wf_file" "$BOT_ACTORS" <<< "$PATCHER_SCRIPT")
-    
+
     case "$RESULT" in
       "OK:patched")
         success "    ✓ $(basename "$wf_file") 패치됨"
@@ -242,22 +248,14 @@ while IFS='|' read -r REPO_NAME DEFAULT_BRANCH; do
         ;;
     esac
   done
-  
+
   if [[ ${#PATCHED_FILES[@]} -eq 0 ]]; then
     warn "  └ 패치할 파일 없음, 스킵"
     SUMMARY_SKIPPED+=("$REPO_NAME (nothing to patch)")
     cd - > /dev/null
     continue
   fi
-  
-  # dry-run이면 여기서 중단
-  if [[ "$DRY_RUN" == "true" ]]; then
-    success "  └ [DRY-RUN] ${#PATCHED_FILES[@]}개 파일 패치 대상"
-    SUMMARY_PATCHED+=("$REPO_NAME (${#PATCHED_FILES[@]} files)")
-    cd - > /dev/null
-    continue
-  fi
-  
+
   # 브랜치 생성 및 커밋
   git checkout -b "$BRANCH_NAME" --quiet
   git add "${PATCHED_FILES[@]}"
