@@ -14,6 +14,7 @@
 #   ./patch-workflows-skip-bots.sh --apply    # 실제 PR 생성
 
 set -euo pipefail
+export GH_PAGER=""
 
 # ── 설정 ────────────────────────────────────────────────────────────────────
 BOT_ACTORS='["dependabot[bot]", "renovate[bot]", "snyk-bot", "allcontributors[bot]"]'
@@ -197,10 +198,10 @@ while IFS='|' read -r REPO_NAME DEFAULT_BRANCH; do
     continue
   fi
   
-  # 이미 패치 브랜치가 있는지 확인 (clone 전에 체크)
-  EXISTING_BRANCH=$(gh api "repos/${FULL_REPO}/branches/${BRANCH_NAME}" \
-    --jq '.name' 2>/dev/null || echo "")
-  if [[ -n "$EXISTING_BRANCH" ]]; then
+  # 이미 패치 브랜치가 있는지 확인 (clone 전에 체크, HTTP status로 판단)
+  BRANCH_STATUS=$(gh api "repos/${FULL_REPO}/branches/${BRANCH_NAME}" \
+    -i 2>/dev/null | head -1 | awk '{print $2}')
+  if [[ "$BRANCH_STATUS" == "200" ]]; then
     warn "  └ 이미 ${BRANCH_NAME} 브랜치 존재, 스킵"
     SUMMARY_SKIPPED+=("$REPO_NAME (branch exists)")
     continue
